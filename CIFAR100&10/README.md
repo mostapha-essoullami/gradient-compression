@@ -34,7 +34,7 @@ parser.add_argument('--momentum', type=float, default=0.0)
 Run the following line on the nodes participating in the training, change the node_rank (rank of each node) and nnodes  (# of nodes) parameters accordingly.
 
 ```
-python -m torch.distributed.launch --nproc_per_node=NUM_GPUS_PER_NODE --nnodes=NUM_NODES --node_rank=RANK --master_addr=MASTER_ADDR --master_port=MASTER_PORT training/train_imagenet_nv.py --logdir LOG_DIR --distributed --init-bn0 --no-bn-wd --name RUN_NAME --compress='layerwise' --method='Topk' --ratio=0.3
+python dawn.py --master_address='tcp://192.168.0.1:2222' --rank=0 --world_size=1 --network='resnet9' --compress='layerwise' --method='Topk' --ratio=0.3
 ```
 
 
