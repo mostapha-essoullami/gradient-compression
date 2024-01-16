@@ -17,19 +17,14 @@ parser.add_argument('--rank', '-r', type=int, default=0)
 parser.add_argument('--world_size', '-w', type=int, default=1)
 parser.add_argument('--network', '-n', type=str, default='Resnet18')
 parser.add_argument('--compress', '-c', type=str, default='layerwise')
-parser.add_argument('--method', type=str, default=None)
+parser.add_argument('--method', type=str, default='Topk-layer')
 parser.add_argument('--ratio', '-K', type=float, default=0)
 parser.add_argument('--threshold', '-V', type=float, default=0.001)
 parser.add_argument('--qstates', '-Q', type=int, default=0)
 parser.add_argument('--momentum', type=float, default=0.0)
-parser.add_argument('--extras', type=str, default="0000")
-parser.add_argument('--k_min0', type=float, default=0.01)
-parser.add_argument('--k_max0', type=float, default=0.001)
-parser.add_argument('--k_min1', type=float, default=0.01)
-parser.add_argument('--k_max1', type=float, default=0.001)
+parser.add_argument('--extras', type=str, default="12")
 parser.add_argument('--memory', type=int, default=0)
 parser.add_argument('--gpu', type=int, default=0)
-parser.add_argument('--learning_rate', type=float, default=0.1)
 #Network definition
 def conv_bn(c_in, c_out, bn_weight_init=1.0, **kw):
     return {
@@ -114,12 +109,9 @@ def main():
     
     # update_device(args.rank+1)
     update_device(args.gpu)
-    k_min0,k_max0=(args.k_min0/100,args.k_max0/100)
-    k_min1,k_max1=(args.k_min1/100,args.k_max1/100)
     memory= args.memory
     device = get_device()
-    anything={"k_min0":k_min0, "k_max0": k_max0, "k_min1":k_min1, "k_max1": k_max1, "memory": memory,
-              'network': args.network, 'device': device, "gpu": args.gpu, 'extras': args.extras}
+    anything={ "memory": memory,'network': args.network, 'device': device, "gpu": args.gpu, 'extras': args.extras}
     
     print(device)
     print(args)
@@ -222,8 +214,7 @@ def main():
     # train_batches = Batches(Transform(train_set, train_transforms), batch_size, shuffle=True, set_random_choices=True, drop_last=True)
     # test_batches = Batches(test_set, batch_size, shuffle=False, drop_last=False)
 
-    # lr = lambda step: lr_schedule(step/len(train_batches))/batch_size
-    lr=args.learning_rate
+    lr = lambda step: lr_schedule(step/len(train_batches))/batch_size
 
     #use Nestrov's momentum SGD or vanillia SGD
     if args.momentum > 0:
@@ -235,8 +226,9 @@ def main():
     anything['optimizer']=opt
     train(model, opt, train_batches, test_batches, epochs, args.master_address, args.world_size, args.rank, loggers=(TableLogger(), TSV), timer=timer, test_time_in_total=False, compress=args.compress, method=args.method, K=args.ratio, V=args.threshold, qstates=args.qstates, extras= args.extras, anything=anything)
 
-    # with open(os.path.join(os.path.expanduser(args.log_dir), 'logs.tsv'), 'a') as f:
-    #     f.write(str(TSV))
+    results_file='_'.join([args.network, str(args.compress), str(args.method), 'epoch-'+str(epochs), str(args.extras)])+'.logs'
+    with open(os.path.join(os.path.expanduser(args.log_dir), results_file), 'a') as f:
+        f.write(str(TSV))
     # feedback='feedback' if anything['memory']==1 else 'nomemory'
     # sv_dir='save_'+args.method
     # if not os.path.exists(sv_dir):

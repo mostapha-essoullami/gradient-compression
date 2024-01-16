@@ -128,8 +128,8 @@ def topk_layer(flatten_grad, extras,index, error_feedback, anything):
     K = K_thres[take]
     if K != 1:
         flatten_grad_abs = flatten_grad.abs()
-        if index in error_feedback and anything['memory'] ==1:
-            flatten_grad_abs +=error_feedback[index].abs()
+        # if index in error_feedback and anything['memory'] ==1:
+        #     flatten_grad_abs +=error_feedback[index].abs()
         thres, _ = flatten_grad_abs.kthvalue(
             math.ceil(flatten_grad.numel() * (1 - K))
         )  # send >= thres
@@ -153,8 +153,8 @@ def topk_level(flatten_grad, extras,index, error_feedback, model_size, anything)
     K = K_thres[take]
     if K != 1:
         flatten_grad_abs = flatten_grad.abs()
-        if index in error_feedback and anything['memory'] ==1:
-            flatten_grad_abs +=error_feedback[index].abs()
+        # if index in error_feedback and anything['memory'] ==1:
+        #     flatten_grad_abs +=error_feedback[index].abs()
         thres, _ = flatten_grad_abs.kthvalue(
             math.ceil(flatten_grad.numel() * (1 - K))
         )  # send >= thres
@@ -178,8 +178,8 @@ def topk_adaptative(flatten_grad, extras,index, error_feedback, model_size, anyt
     K = K_thres[take]
     if K != 1:
         flatten_grad_abs = flatten_grad.abs()
-        if index in error_feedback and anything['memory'] ==1:
-            flatten_grad_abs +=error_feedback[index].abs()
+        # if index in error_feedback and anything['memory'] ==1:
+        #     flatten_grad_abs +=error_feedback[index].abs()
         thres, _ = flatten_grad_abs.kthvalue(
             math.ceil(flatten_grad.numel() * (1 - K))
         )  # send >= thres

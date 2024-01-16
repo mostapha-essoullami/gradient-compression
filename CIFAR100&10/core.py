@@ -409,7 +409,7 @@ def layerwise_compressed_comm(
             # transfer_element[extras[0]][-1].append(len(torch.nonzero(compress_grad)))
 
         else:
-            raise IOError("compress method not found")
+            raise IOError(str(method)+ " compressor method not found")
 
         # non_zero_idx=compress_grad.nonzero().flatten().tolist()
         # for idx in non_zero_idx:
@@ -553,20 +553,7 @@ def entiremodel_compressed_comm(
         pointer += num_param
 
 criterion = nn.CrossEntropyLoss(reduction='none')
-all_grads=[]
-gradient_norms=[]
-grad_infos={'mean':[], "median": [], 'std':[], 'mean-median': []}
-abs_grad_infos={'mean':[], "median": [], 'std':[], 'mean-median': [], 'count_ls_mean': [], 
-                'count_ls_0.05':[], 'count_ls_0.005':[], 'count_ls_first_mean':[], 'count_ls_first_median':[],
-                 'per_iter_grad':[], 'max':[], 'count_ls_max/100':[], 'grad_norm':[],
-                'grad_sum':[], '75_percentile':[],  'per_epoch_test_loss':[], 'per_epoch_test_acc':[],
-                # 'learning_rate':[],'per_iter_median':[]
-                }
-first_median=-1
-first_mean=-1
-per_iter= 3200 #100*20
 
-curr_iter=0
 def run_batches(
     model,
     batches,
@@ -583,7 +570,6 @@ def run_batches(
     extras="",
     anything=None
 ):
-    global first_mean, first_median, curr_iter
     stats = stats or StatsLogger(("loss", "correct"))
     model.train(training)
     for X, labels in batches:
@@ -602,58 +588,7 @@ def run_batches(
     #     stats.append(output)
     #     if training:
     #         output["loss"].sum().backward()
-            # vec=[]
-            # for param in model.parameters():
-            #     vec.append(param.grad.data.view(-1))
-            # flatten_grad = torch.cat(vec)
-            # flatten_grad_abs = flatten_grad.abs()
 
-            # gd_mean=flatten_grad.mean()
-            # gd_median=flatten_grad.median()
-            # gd_std=flatten_grad.std()
-            # abs_gd_mean=flatten_grad_abs.mean()
-            # abs_gd_median=flatten_grad_abs.median()
-            # abs_gd_std=flatten_grad_abs.std()
-            # abs_gd_max=flatten_grad_abs.max()
-
-            # if first_median==-1:
-            #     first_median=abs_gd_median
-            #     first_mean=abs_gd_mean
-            #     abs_grad_infos['first_mean']=first_mean.item()
-            #     abs_grad_infos['first_median']=first_median.item()
-            
-            # grad_infos['mean'].append(gd_mean.item())
-            # grad_infos['median'].append(gd_median.item())
-            # grad_infos['std'].append(gd_std.item())
-            # grad_infos['mean-median'].append((gd_mean-gd_median).item())
-
-            # abs_grad_infos['mean'].append(abs_gd_mean.item())
-            # abs_grad_infos['median'].append(abs_gd_median.item())
-            # abs_grad_infos['std'].append(abs_gd_std.item())
-            # abs_grad_infos['mean-median'].append((abs_gd_mean-abs_gd_median).item())
-            
-            # abs_grad_infos['count_ls_mean'].append(torch.sum(flatten_grad_abs <= abs_gd_mean).item())
-            # abs_grad_infos['count_ls_0.05'].append(torch.sum(flatten_grad_abs <= 0.05).item())
-            # abs_grad_infos['count_ls_0.005'].append(torch.sum(flatten_grad_abs <= 0.005).item())
-            # abs_grad_infos['count_ls_first_mean'].append(torch.sum(flatten_grad_abs <= first_mean).item())
-            # abs_grad_infos['count_ls_first_median'].append(torch.sum(flatten_grad_abs <= first_median).item())
-            # abs_grad_infos['max'].append(abs_gd_max.item())
-            # abs_grad_infos['count_ls_max/100'].append(torch.sum(flatten_grad_abs <= abs_gd_max/100).item())
-            # abs_grad_infos['grad_norm'].append(torch.norm(flatten_grad_abs).item())
-            # abs_grad_infos['grad_sum'].append(torch.sum(flatten_grad_abs).item())
-            # abs_grad_infos['75_percentile'].append(torch.quantile(flatten_grad_abs, 0.75).item())
-
-
-            # if curr_iter%per_iter==0:
-            #     print(curr_iter)
-            #     # abs_grad_infos['per_iter_median'].append(abs_gd_median.item())
-            #     abs_grad_infos['per_iter_grad'].append(flatten_grad.tolist())
-            # curr_iter+=1
-
-            # abs_grad_infos['learning_rate'].append(anything['optimizer'].param_values()["lr"])
-            # current_gradients = torch.cat([param.grad.flatten() for param in model.parameters()])
-
-            # all_grads.append([torch.norm(param.grad).item() for name, param in model.named_parameters()])
             # output["loss"].sum().backward()
             if compress == "layerwise":
                 layerwise_compressed_comm(
@@ -668,9 +603,7 @@ def run_batches(
                 for layer in model.parameters():
                     dist.all_reduce(layer.grad.data)
                     layer.grad.data /= world_size
-            # previous_gradients = torch.cat([prev_grad.grad.flatten() for prev_grad in model.parameters()])
-            # gradient_diff_norm = torch.norm(current_gradients - previous_gradients)/torch.norm(current_gradients)
-            # gradient_norms.append(1-(gradient_diff_norm.item())**2)
+            # previous_gradients = torch.cat([prev_grad.grad
             optimizer_step()
             model.zero_grad()
     return stats
@@ -712,8 +645,8 @@ def train_epoch(
     test_stats, test_time = run_batches(
         model, test_batches, False, world_size, extras=extras, anything=anything
     ), timer(test_time_in_total)
-    abs_grad_infos['per_epoch_test_acc'].append(test_stats.mean("correct"))
-    abs_grad_infos['per_epoch_test_loss'].append(test_stats.mean("loss"))
+    # abs_grad_infos['per_epoch_test_acc'].append(test_stats.mean("correct"))
+    # abs_grad_infos['per_epoch_test_loss'].append(test_stats.mean("loss"))
     return {
         "train_time": train_time,
         "train_loss": train_stats.mean("loss"),
@@ -786,26 +719,7 @@ def train(
         for logger in loggers:
             logger.append(summary)
             
-    # torch.save(all_grads, 'all_gradients.pth')
-    save_path='/home/mostapha.essoullami/lustre/opt_for_ml-um6p-sccs-en-tifcyqktztk/users/mostapha.essoullami/tests/gradient_infos/cifar100/grad+learningrate'
-    
-    # with open(save_path+'/test'+str(int(K))+'_nocomp_abs-grad_'+str(optimizer.param_values()["lr"])+'-learning_rates_100ep_res18_per900iter'+'.json', 'w') as json_file:
-    #             json.dump(abs_grad_infos, json_file)
-    # with open(save_path+'/extra-test'+str(int(K))+'_'+anything['extras']+'_nocomp_no-abs-grad_100ep_'+str(K)+'_node'+str(anything['gpu']-1)+'.json', 'w') as json_file:
-    #             json.dump(grad_infos, json_file)
-    # # if rank ==0:
-    #     feedback='feedback' if anything['memory']==1 else 'nomemory'
-    #     network= anything['network']
-    #     json_file = network+'_'+ method+'_'+extras+'_'+feedback+'.json'
-    #     sv_dir='saved_idx_'+method
-    #     if not os.path.exists(sv_dir):
-    #         os.mkdir(sv_dir)
-    #     test= get_test_nb(json_file, sv_dir)
-    #     json_file_path=sv_dir+'/test'+test+'_'+json_file
-    # # Write the list to the JSON file
 
-    #     with open(json_file_path, 'w') as json_file:
-    #         json.dump([transfer_element], json_file)
       
     return summary
 
